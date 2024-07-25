@@ -1,5 +1,7 @@
 #pragma once
 #include "SDL.h"
+#include <unordered_map>
+#include <memory>
 #include <vector>
 #include <iostream>
 struct IntVector {
@@ -16,92 +18,62 @@ private:
 
 	struct genericData {
 		uiTypes type;
-		std::vector<int> dataPositions;
-
+		int objectID;
 	};
 	
 	SDL_Renderer* renderer = nullptr;
+	
+	std::unordered_map<int,IntVector> SizeList;
+	std::unordered_map<int, IntVector> PositionList;
+	std::unordered_map<int, SDL_Color> ColorList;
+	std::unordered_map<int, SDL_Texture*> TextureList;
+	std::unordered_map<int, bool> VisibleList;
+	std::unordered_map<int, bool> InteractableList;
 
-	std::vector<IntVector> SizeList;
-	std::vector<IntVector> PositionList;
-	std::vector<SDL_Color> ColorList;
-	std::vector<SDL_Texture*> TextureList;
-	std::vector<bool> VisibleList;
-	std::vector<bool> InteractableList;
-
-	std::vector<genericData*> Descendants;
+	std::vector<std::unique_ptr<genericData>> Descendants;
+	std::vector<int> allocatedIDs;
+	std::vector<int> freedIDs;
 
 	int ScreenX;
 	int ScreenY;
+
+	int generateID() {
+		if (!freedIDs.empty()) {
+			int toReturn = freedIDs[0];
+			freedIDs.erase(freedIDs.begin());
+			allocatedIDs.insert(allocatedIDs.begin() + toReturn, toReturn);
+			return toReturn;
+		}
+		allocatedIDs.push_back(allocatedIDs.size());
+		return allocatedIDs.size()-1;
+	}
 public:
 	ScreenGui(int scrX, int scrY, SDL_Renderer* Renderer) : ScreenX(scrX), ScreenY(scrY), renderer(Renderer) {
 
 	}
 
-	int processClick()
+	int processClick();
+
+	int destroyObject(int objectID) {
+		allocatedIDs.erase(allocatedIDs.begin()+objectID)
+	}
 
 	int createButton(int x, int y, int w, int h, bool visible, bool interactable, SDL_Color color) {
 		// create a genericdata and assign variables to the correct places
-		genericData* newButton = new genericData;
-		newButton->type = Button;
+		auto newButton = std::make_unique<genericData>();
+		newButton->type = Frame;
+		newButton->objectID = generateID();
 
 		IntVector sizeToAssign = { w,h };
 		IntVector positionToAssign = { x,y };
 
-		newButton->dataPositions.resize(5);
+		VisibleList[newButton->objectID] = visible;
 
-		newButton->dataPositions[0] = VisibleList.size();
-		VisibleList.push_back(visible);
+		SizeList[newButton->objectID] = sizeToAssign;
 
-		newButton->dataPositions[1] = InteractableList.size();
-		InteractableList.push_back(interactable);
+		PositionList[newButton->objectID] = positionToAssign;
 
-		newButton->dataPositions[2] = SizeList.size();
-		SizeList.push_back(sizeToAssign);
-
-		newButton->dataPositions[3] = PositionList.size();
-		PositionList.push_back(positionToAssign);
-
-		newButton->dataPositions[4] = ColorList.size();
-		ColorList.push_back(color);
-
-		//create the texture for the button
-		SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_RGBA32);
-
-		Uint32 nColor = SDL_MapRGBA(surface->format, color.r, color.g, color.b, color.a);
-		SDL_FillRect(surface, NULL, nColor);
-
-		SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-
-		newButton->dataPositions[5] = TextureList.size();
-		TextureList.push_back(texture);
-
-		SDL_FreeSurface(surface);
-
-		return 0;
-	}
-
-	int createFrame(int x, int y, int w, int h, bool visible, SDL_Color color) {
-		// create a genericdata and assign variables to the correct places
-		genericData* newFrame = new genericData;
-		newFrame->type = Frame;
-		
-		IntVector sizeToAssign = { w,h };
-		IntVector positionToAssign = { x,y };
-
-		newFrame->dataPositions.resize(5);
-
-		newFrame->dataPositions[0] = VisibleList.size();
-		VisibleList.push_back(visible);
-
-		newFrame->dataPositions[1] = SizeList.size();
-		SizeList.push_back(sizeToAssign);
-
-		newFrame->dataPositions[2] = PositionList.size();
-		PositionList.push_back(positionToAssign);
-
-		newFrame->dataPositions[3] = ColorList.size();
-		ColorList.push_back(color);
+		ColorList[newButton->objectID] = color;
 
 		//create the texture for the frame
 		SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_RGBA32);
@@ -111,10 +83,45 @@ public:
 
 		SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
 
-		newFrame->dataPositions[4] = TextureList.size();
-		TextureList.push_back(texture);
+		TextureList[newButton->objectID] = texture;
 
 		SDL_FreeSurface(surface);
+
+		Descendants.push_back(std::move(newButton));
+
+		return 0;
+	}
+
+	int createFrame(int x, int y, int w, int h, bool visible, SDL_Color color) {
+		// create a genericdata and assign variables to the correct places
+		auto newFrame = std::make_unique<genericData>();
+		newFrame->type = Frame;
+		newFrame->objectID = generateID();
+		
+		IntVector sizeToAssign = { w,h };
+		IntVector positionToAssign = { x,y };
+
+		VisibleList[newFrame->objectID] = visible;
+
+		SizeList[newFrame->objectID] = sizeToAssign;
+
+		PositionList[newFrame->objectID] = positionToAssign;
+
+		ColorList[newFrame->objectID] = color;
+
+		//create the texture for the frame
+		SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_RGBA32);
+
+		Uint32 nColor = SDL_MapRGBA(surface->format, color.r, color.g, color.b, color.a);
+		SDL_FillRect(surface, NULL, nColor);
+
+		SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+
+		TextureList[newFrame->objectID] = texture;
+
+		SDL_FreeSurface(surface);
+
+		Descendants.push_back(std::move(newFrame));
 
 		return 0;
 	}
