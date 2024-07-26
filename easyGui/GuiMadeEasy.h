@@ -30,22 +30,24 @@ private:
 	std::unordered_map<int, bool> VisibleList;
 	std::unordered_map<int, bool> InteractableList;
 
-	std::vector<std::unique_ptr<genericData>> Descendants;
-	std::vector<int> allocatedIDs;
-	std::vector<int> freedIDs;
+	std::unordered_map<int, std::unique_ptr<genericData>> Descendants;
+	std::unordered_map<int, bool> allocatedIDs;
+	std::unordered_map<int, bool> freedIDs;
 
 	int ScreenX;
 	int ScreenY;
 
 	int generateID() {
 		if (!freedIDs.empty()) {
-			int toReturn = freedIDs[0];
-			freedIDs.erase(freedIDs.begin());
-			allocatedIDs.insert(allocatedIDs.begin() + toReturn, toReturn);
-			return toReturn;
+			auto it = freedIDs.begin();
+			int id = it->first;
+			freedIDs.erase(it);
+			allocatedIDs[id] = true;
+			return id;
 		}
-		allocatedIDs.push_back(allocatedIDs.size());
-		return allocatedIDs.size()-1;
+		int newId = allocatedIDs.size();
+		allocatedIDs[newId] = true;
+		return newId;
 	}
 public:
 	ScreenGui(int scrX, int scrY, SDL_Renderer* Renderer) : ScreenX(scrX), ScreenY(scrY), renderer(Renderer) {
@@ -54,8 +56,43 @@ public:
 
 	int processClick();
 
+	int checkIDInAllLists(int objectID) {
+		if (SizeList.find(objectID) != SizeList.end()) {
+			std::cout << "SizeList:" << SizeList.find(objectID)->first << '\n';
+		}
+		else
+		{
+			std::cout << "SizeList: NOT FOUND\n";
+		}
+
+		return 0;
+	}
+
 	int destroyObject(int objectID) {
-		allocatedIDs.erase(allocatedIDs.begin()+objectID)
+		auto it = allocatedIDs.find(objectID);
+		if (it != allocatedIDs.end()) {
+			allocatedIDs.erase(it);
+			freedIDs[objectID] = true;
+
+			SizeList.erase(objectID);
+			PositionList.erase(objectID);
+			ColorList.erase(objectID);
+			VisibleList.erase(objectID);
+			InteractableList.erase(objectID);
+			if (TextureList.find(objectID) != TextureList.end()) {
+				SDL_DestroyTexture(TextureList[objectID]);
+				TextureList.erase(objectID);
+			}
+
+			if (Descendants.find(objectID) != Descendants.end()) {
+				Descendants[objectID].release();
+				Descendants.erase(objectID);
+			}
+
+			return 0;
+		}
+
+		return -1; // object not found
 	}
 
 	int createButton(int x, int y, int w, int h, bool visible, bool interactable, SDL_Color color) {
@@ -87,7 +124,7 @@ public:
 
 		SDL_FreeSurface(surface);
 
-		Descendants.push_back(std::move(newButton));
+		Descendants[newButton->objectID] = std::move(newButton);
 
 		return 0;
 	}
@@ -121,7 +158,7 @@ public:
 
 		SDL_FreeSurface(surface);
 
-		Descendants.push_back(std::move(newFrame));
+		Descendants[newFrame->objectID] = std::move(newFrame);
 
 		return 0;
 	}

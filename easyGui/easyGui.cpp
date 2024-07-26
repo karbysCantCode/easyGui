@@ -7,6 +7,8 @@
 
 int main(int argc, char* argv[])
 {
+    ScreenGui test(1,1,nullptr);
+    test.checkIDInAllLists(100);
     std::cout << "Hello World!\n";
     return 0;
 }
