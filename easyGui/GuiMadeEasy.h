@@ -108,14 +108,30 @@ public:
 		objectToMove->Zindex = ZindexToMoveTo;
 		makeZindexIndexExist(objectToMove->Zindex);
 		VisibleDescendantsSortedByZindex2D[objectToMove->Zindex].insert({ objectToMove->objectID, objectToMove });
-		std::cout << "Added object ID: " << objectToMove->objectID << " to ZINDEX: " << objectToMove->Zindex << '\n';
+		//std::cout << objectToMove->objectID << '\n';
 		return 0;
 	}
 
 	int processClick();
 
+	size_t getTextureSize(SDL_Texture* texture) {
+		int w, h, access;
+		Uint32 format;
+		SDL_QueryTexture(texture, &format, &access, &w, &h);
+		int bpp = SDL_BYTESPERPIXEL(format);
+		return w * h * bpp;
+	}
+
+	size_t getTotalTextureSize() {
+		size_t totalSize = 0;
+		for (const auto& entry : TextureList) {
+			totalSize += getTextureSize(entry.second);
+		}
+		return totalSize;
+	}
+
 	int objectCount() {
-		std::cout << Descendants.size();
+		std::cout << Descendants.size() << '\n';
 		return 0;
 	}
 
@@ -176,36 +192,30 @@ public:
 	int createButton(int x, int y, int w, int h, bool visible, bool interactable, SDL_Color color) {
 		// create a genericdata and assign variables to the correct places
 		auto newButton = std::make_shared<genericData>();
-		newButton->type = Button;
+		newButton->type = Frame;
 		newButton->onScreenObject = true;
+		newButton->objectID = generateID();
 		newButton->Zindex = 0;
 		moveZindex(newButton, 0);
-		newButton->objectID = generateID();
 
 		IntVector sizeToAssign = { w,h };
 		IntVector positionToAssign = { x,y };
 
-		VisibleList[newButton->objectID] = visible;
+		VisibleList.insert({ newButton->objectID , visible });
+		SizeList.insert({ newButton->objectID , sizeToAssign });
+		PositionList.insert({ newButton->objectID , positionToAssign });
+		ColorList.insert({ newButton->objectID , color });
+		InteractableList.insert({ newButton->objectID , interactable });
 
-		SizeList[newButton->objectID] = sizeToAssign;
-
-		PositionList[newButton->objectID] = positionToAssign;
-
-		ColorList[newButton->objectID] = color;
-
-		//create the texture for the frame
+		// Create the texture for the frame
 		SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_RGBA32);
-
 		Uint32 nColor = SDL_MapRGBA(surface->format, color.r, color.g, color.b, color.a);
 		SDL_FillRect(surface, NULL, nColor);
-
 		SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-
-		TextureList[newButton->objectID] = texture;
-
+		TextureList.insert({ newButton->objectID , texture });
 		SDL_FreeSurface(surface);
 
-		Descendants[newButton->objectID] = newButton;
+		Descendants.insert({ newButton->objectID , newButton });
 
 		return 0;
 	}
@@ -238,7 +248,7 @@ public:
 		Descendants.insert({ newFrame->objectID , newFrame });
 
 		// Debug print
-		std::cout << positionToAssign.X << ":" << positionToAssign.Y << "\n";
+		//std::cout << positionToAssign.X << ":" << positionToAssign.Y << "\n";
 
 		return 0;
 	}

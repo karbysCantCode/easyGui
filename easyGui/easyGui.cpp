@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
 
     ScreenGui testGui(500,600,renderer);
 
-    const int ticksPerSecond = 100;
+    const int ticksPerSecond = 999;
     const auto tickInterval = TRME_getTickInterval(ticksPerSecond);
     int currentTick = 0;
     auto startTime = TRME_getTimePoint();
@@ -54,10 +54,9 @@ int main(int argc, char* argv[])
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
         SDL_RenderClear(renderer);
-        ++currentTick;
+        currentTick++;
 
         if (currentTick % 1 == 0) {
-            currentTick = 0;
             SDL_Color randomColor;
             randomColor.r = random(0, 255);
             randomColor.g = random(0, 255);
@@ -67,7 +66,11 @@ int main(int argc, char* argv[])
             testGui.createFrame(random(1, 500), random(1, 600), random(1, 100), random(1, 100), true, randomColor);
             //testGui.zindexOut();
         }
-        auto startrendercalc = TRME_getTimePoint();
+
+        if (currentTick % 100 == 0) {
+            testGui.objectCount();
+        }
+
         testGui.renderDescendants();
         //testGui.objectCount();
         SDL_RenderPresent(renderer);
