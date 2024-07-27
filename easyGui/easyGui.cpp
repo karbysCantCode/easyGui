@@ -4,12 +4,83 @@
 #include <iostream>
 #include "SDL.h"
 #include "GuiMadeEasy.h"
+#include "TickRateMadeEasy.h"
+#include "randomNumbers.h"
 
 int main(int argc, char* argv[])
 {
-    ScreenGui test(1,1,nullptr);
-    test.checkIDInAllLists(100);
-    std::cout << "Hello World!\n";
+    // Initialize SDL
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        std::cerr << "SDL_Init Error: " << SDL_GetError() << std::endl;
+        return 1;
+    }
+
+    // Create an SDL window
+    SDL_Window* window = SDL_CreateWindow("SDL2 Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_SHOWN);
+    if (window == nullptr) {
+        std::cerr << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
+        SDL_Quit();
+        return 1;
+    }
+
+    // Create an SDL renderer
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (renderer == nullptr) {
+        std::cerr << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+
+    ScreenGui testGui(500,600,renderer);
+
+    const int ticksPerSecond = 100;
+    const auto tickInterval = TRME_getTickInterval(ticksPerSecond);
+    int currentTick = 0;
+    auto startTime = TRME_getTimePoint();
+
+    bool running = true;
+    SDL_Event event;
+
+    while (running) {
+        startTime = TRME_getTimePoint();
+
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                running = false;
+            }
+            // Add more event handling as needed (e.g., keyboard input, mouse clicks)
+        }
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+        SDL_RenderClear(renderer);
+        ++currentTick;
+
+        if (currentTick % 1 == 0) {
+            currentTick = 0;
+            SDL_Color randomColor;
+            randomColor.r = random(0, 255);
+            randomColor.g = random(0, 255);
+            randomColor.b = random(0, 255);
+            randomColor.a = 255;  // Full opacity
+
+            testGui.createFrame(random(1, 500), random(1, 600), random(1, 100), random(1, 100), true, randomColor);
+            //testGui.zindexOut();
+        }
+        auto startrendercalc = TRME_getTimePoint();
+        testGui.renderDescendants();
+        //testGui.objectCount();
+        SDL_RenderPresent(renderer);
+
+
+
+        TRME_sleepUntilNextTick(startTime, tickInterval);
+    }
+
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+    
     return 0;
 }
 

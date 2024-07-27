@@ -23,5 +23,11 @@
     <ClInclude Include="GuiMadeEasy.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TickRateMadeEasy.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="randomNumbers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
