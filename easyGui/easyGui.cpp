@@ -16,7 +16,7 @@ int main(int argc, char* argv[])
     }
 
     // Create an SDL window
-    SDL_Window* window = SDL_CreateWindow("SDL2 Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_SHOWN);
+    SDL_Window* window = SDL_CreateWindow("SDL2 Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 800, SDL_WINDOW_SHOWN);
     if (window == nullptr) {
         std::cerr << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
         SDL_Quit();
@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    ScreenGui testGui(500,600,renderer);
+    ScreenGui testGui(500,600, 10,renderer);
 
     const int ticksPerSecond = 999;
     const auto tickInterval = TRME_getTickInterval(ticksPerSecond);
@@ -49,26 +49,36 @@ int main(int argc, char* argv[])
             if (event.type == SDL_QUIT) {
                 running = false;
             }
+            else if (event.type == SDL_MOUSEBUTTONDOWN) {
+                int mouseX, mouseY;
+                SDL_GetMouseState(&mouseX, &mouseY);
+                testGui.processClick(mouseX, mouseY, true);
+            }
             // Add more event handling as needed (e.g., keyboard input, mouse clicks)
         }
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
         SDL_RenderClear(renderer);
         currentTick++;
-
-        if (currentTick % 1 == 0) {
+        if (currentTick % 100 == 0 || currentTick % 200 == 0) {
+        }
+        if (currentTick % 100 == 0) {
             SDL_Color randomColor;
             randomColor.r = random(0, 255);
             randomColor.g = random(0, 255);
             randomColor.b = random(0, 255);
             randomColor.a = 255;  // Full opacity
 
-            testGui.createFrame(random(1, 500), random(1, 600), random(1, 100), random(1, 100), true, randomColor);
+            testGui.createButton(random(0, 500), random(0, 600), random(1, 100), random(1, 100), true,true, randomColor);
             //testGui.zindexOut();
         }
 
-        if (currentTick % 100 == 0) {
-            testGui.objectCount();
+        if (currentTick % 200 == 0) {
+            const int idToErase = random(0, testGui.objectCount(false) - 1);
+            const bool exists = testGui.checkIDInAllLists(idToErase, false);
+            if (exists) {
+                testGui.destroyObject(idToErase);
+            }
         }
 
         testGui.renderDescendants();
