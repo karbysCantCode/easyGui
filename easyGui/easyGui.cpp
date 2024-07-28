@@ -60,8 +60,6 @@ int main(int argc, char* argv[])
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
         SDL_RenderClear(renderer);
         currentTick++;
-        if (currentTick % 100 == 0 || currentTick % 200 == 0) {
-        }
         if (currentTick % 100 == 0) {
             SDL_Color randomColor;
             randomColor.r = random(0, 255);
@@ -79,6 +77,11 @@ int main(int argc, char* argv[])
             if (exists) {
                 testGui.destroyObject(idToErase);
             }
+        }
+
+        if (currentTick % 1000 == 0) {
+            std::cout << "[[[[[[EVERY THING AT TICK:" << currentTick << "]]]]]]\n";
+            testGui.GIVEMEEVERYTHING();
         }
 
         testGui.renderDescendants();

@@ -5,6 +5,25 @@
 #include <memory>
 #include <vector>
 #include <iostream>
+const enum GME_uiTypes {
+	GME_Frame,
+	GME_Button
+};
+
+struct GME_genericData {
+	int parent;
+	bool onScreenObject;
+	GME_uiTypes type;
+	int objectID;
+	int Zindex;
+};
+
+struct GME_guiGroup {
+	std::vector<std::shared_ptr<GME_genericData>> GroupDescendants;
+	bool enabled = true;
+	int groupID;
+};
+
 struct IntVector {
 	int X;
 	int Y;
@@ -20,33 +39,23 @@ bool clamp2D(IntVector value, IntVector min, IntVector max) {
 
 class ScreenGui {
 private:
-	const enum uiTypes {
-		Frame,
-		Button
-	};
-
-	struct genericData {
-		bool onScreenObject;
-		uiTypes type;
-		int objectID;
-		int Zindex;
-	};
 	
 	SDL_Renderer* renderer = nullptr;
 	
-	std::unordered_map<int,IntVector> SizeList;
+	std::unordered_map<int, IntVector> SizeList;
 	std::unordered_map<int, IntVector> PositionList;
 	std::unordered_map<int, SDL_Color> ColorList;
 	std::unordered_map<int, SDL_Texture*> TextureList;
 	std::unordered_map<int, bool> VisibleList;
 	std::unordered_map<int, bool> InteractableList;
 
-	std::unordered_map<int, std::shared_ptr<genericData>> Descendants;
-	std::vector<std::unordered_map<int, std::shared_ptr<genericData>>> VisibleDescendantsSortedByZindex2D;
+	std::unordered_map<int, std::shared_ptr<GME_genericData>> Descendants;
+	std::unordered_map<int, std::shared_ptr<GME_guiGroup>> Groups;
+	std::vector<std::unordered_map<int, std::shared_ptr<GME_genericData>>> VisibleDescendantsSortedByZindex2D;
 	std::unordered_set<int> allocatedIDs;
 	std::unordered_set<int> freedIDs;
 
-	std::vector<std::unordered_map<int, std::shared_ptr<genericData>>> interactableSortedInCells2D;
+	std::vector<std::unordered_map<int, std::shared_ptr<GME_genericData>>> interactableSortedInCells2D;
 
 	int ScreenX;
 	int ScreenY;
@@ -87,7 +96,7 @@ private:
 		return false;
 	}
 
-	int addToGrid(std::shared_ptr<genericData> objectToAdd) {
+	int addToGrid(std::shared_ptr<GME_genericData> objectToAdd) {
 		if (objectToAdd == nullptr) { return -1; } //object doesnt exist
 		
 		const int objID = objectToAdd->objectID;
@@ -122,7 +131,7 @@ private:
 		return 0;
 	}
 
-	int removeFromGrid(std::shared_ptr<genericData> objectToAdd) {
+	int removeFromGrid(std::shared_ptr<GME_genericData> objectToAdd) {
 		if (objectToAdd == nullptr) { return -1; } //object doesnt exist
 
 		const int objID = objectToAdd->objectID;
@@ -194,7 +203,7 @@ public:
 	/*
 	0 = success
 	*/
-	int moveZindex(std::shared_ptr<genericData> objectToMove, int ZindexToMoveTo) {
+	int moveZindex(std::shared_ptr<GME_genericData> objectToMove, int ZindexToMoveTo) {
 		if (isObjectInZindex(objectToMove->Zindex, objectToMove->objectID)) {
 			VisibleDescendantsSortedByZindex2D[objectToMove->Zindex].erase(objectToMove->objectID);
 			//std::cout << "Removed object ID: " << objectToMove->objectID << " from ZINDEX: " << objectToMove->Zindex << '\n';
@@ -215,7 +224,7 @@ public:
 		const IntVector cellClicked = { x / CellX
 									   ,y / CellY };
 
-		std::shared_ptr<genericData> clickedButton;
+		std::shared_ptr<GME_genericData> clickedButton;
 		
 		for (auto& currentButton : interactableSortedInCells2D[cellClicked.Y * GridSize + cellClicked.X]) {
 			if (InteractableList[currentButton.first] && clamp2D({x,y},
@@ -324,9 +333,75 @@ public:
 			return 0;
 		}
 	}
+
+	int GIVEMEEVERYTHING() {
+		std::cout << "Descendants:\n";
+		for (const auto& current : Descendants) {
+			std::cout << "	" << "Key:" << current.first << " Value:" << current.second << '\n';
+		}
+		std::cout << "SizeList:\n";
+		for (const auto& current : SizeList) {
+			std::cout << "	" << "Key:" << current.first << " Value:" << current.second.X << ',' << current.second.Y << '\n';
+		}
+		std::cout << "PositionList:\n";
+		for (const auto& current : PositionList) {
+			std::cout << "	" << "Key:" << current.first << " Value:" << current.second.X << ',' << current.second.Y << '\n';
+		}
+		std::cout << "ColorList:\n";
+		for (const auto& current : ColorList) {
+			std::cout << "	" << "Key:" << current.first << " Value:" << static_cast<int>(current.second.r) << ',' << static_cast<int>(current.second.g) << ',' << static_cast<int>(current.second.b) << ',' << static_cast<int>(current.second.a) << '\n';
+		}
+		std::cout << "TextureList:\n";
+		for (const auto& current : TextureList) {
+			std::cout << "	" << "Key:" << current.first << " Value:" << current.second << '\n';
+		}
+		std::cout << "VisibleList:\n";
+		for (const auto& current : VisibleList) {
+			std::cout << "	" << "Key:" << current.first << " Value:" << current.second << '\n';
+		}
+		std::cout << "InteractableList:\n";
+		for (const auto& current : InteractableList) {
+			std::cout << "	" << "Key:" << current.first << " Value:" << current.second << '\n';
+		}
+		std::cout << "AllocatedIDS:\n";
+		for (const auto& current : allocatedIDs) {
+			std::cout << "	" << " Value:" << current << '\n';
+		}
+		std::cout << "FreedIDS:\n";
+		for (const auto& current : freedIDs) {
+			std::cout << "	" << " Value:" << current << '\n';
+		}
+
+
+		return 0;
+	}
 /*
 [[[[[[[[[[[[[[[[[[[[[[[[ FUNCTIONS FOR FUNCTION USE!!!!]]]]]]]]]]]]]]]]]]]]]]]
 */
+	int addToGroup(int groupID, int objID) {
+		if (Groups.find(groupID) == Groups.end()) { return 1; }
+		Groups[groupID]->GroupDescendants.push_back(Descendants[objID]);
+		return 0;
+	}
+
+	int removeFromGroup(const int groupID, const int objID) {
+		if (Groups.find(groupID) == Groups.end()) { return 1; }
+
+		return 0;
+	}
+
+	int setGroupEnabled(const int groupID, const bool Enabled) {
+		if (Groups.find(groupID) == Groups.end()) { return 1; }
+
+		for (auto& currentObject : Groups[groupID]->GroupDescendants) {
+			if (currentObject->onScreenObject) {
+				VisibleList[currentObject->objectID] = Enabled;
+			}
+		}
+
+		return 0;
+	}
+
 	/*
 	0 = sucess
 	1 = object not found
@@ -343,6 +418,7 @@ public:
 				removeFromGrid(Descendants[objectID]);
 			}
 
+			VisibleDescendantsSortedByZindex2D[Descendants[objectID]->Zindex].erase(objectID);
 			SizeList.erase(objectID);
 			PositionList.erase(objectID);
 			ColorList.erase(objectID);
@@ -367,8 +443,8 @@ public:
 	*/
 	int createButton(int x, int y, int w, int h, bool visible, bool interactable, SDL_Color color) {
 		// create a genericdata and assign variables to the correct places
-		auto newButton = std::make_shared<genericData>();
-		newButton->type = Frame;
+		auto newButton = std::make_shared<GME_genericData>();
+		newButton->type = GME_Button;
 		newButton->onScreenObject = true;
 		newButton->objectID = generateID();
 		newButton->Zindex = 0;
@@ -407,8 +483,8 @@ public:
 	*/
 	int createFrame(int x, int y, int w, int h, bool visible, SDL_Color color) {
 		// create a genericdata and assign variables to the correct places
-		auto newFrame = std::make_shared<genericData>();
-		newFrame->type = Frame;
+		auto newFrame = std::make_shared<GME_genericData>();
+		newFrame->type = GME_Frame;
 		newFrame->onScreenObject = true;
 		newFrame->objectID = generateID();
 		newFrame->Zindex = 0;
@@ -436,6 +512,14 @@ public:
 		//std::cout << positionToAssign.X << ":" << positionToAssign.Y << "\n";
 
 		return 0;
+	}
+
+	int createGroup() {
+		std::shared_ptr<GME_guiGroup> newGroup = std::make_shared<GME_guiGroup>();
+		newGroup->groupID = generateID();
+		
+		Groups.insert({ newGroup->groupID, newGroup });
+		return newGroup->groupID;
 	}
 
 };
