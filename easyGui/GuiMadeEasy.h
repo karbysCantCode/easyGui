@@ -19,7 +19,7 @@ struct GME_genericData {
 };
 
 struct GME_guiGroup {
-	std::vector<std::shared_ptr<GME_genericData>> GroupDescendants;
+	std::unordered_map<int,std::shared_ptr<GME_genericData>> GroupDescendants;
 	bool enabled = true;
 	int groupID;
 };
@@ -48,9 +48,9 @@ private:
 	std::unordered_map<int, SDL_Texture*> TextureList;
 	std::unordered_map<int, bool> VisibleList;
 	std::unordered_map<int, bool> InteractableList;
+	std::unordered_map<int, GME_guiGroup> GroupList;
 
 	std::unordered_map<int, std::shared_ptr<GME_genericData>> Descendants;
-	std::unordered_map<int, std::shared_ptr<GME_guiGroup>> Groups;
 	std::vector<std::unordered_map<int, std::shared_ptr<GME_genericData>>> VisibleDescendantsSortedByZindex2D;
 	std::unordered_set<int> allocatedIDs;
 	std::unordered_set<int> freedIDs;
@@ -378,20 +378,21 @@ public:
 /*
 [[[[[[[[[[[[[[[[[[[[[[[[ FUNCTIONS FOR FUNCTION USE!!!!]]]]]]]]]]]]]]]]]]]]]]]
 */
-	int addToGroup(int groupID, int objID) {
-		if (Groups.find(groupID) == Groups.end()) { return 1; }
-		Groups[groupID]->GroupDescendants.push_back(Descendants[objID]);
+	int makeObjectParent(const int parentID, const int objID) {
+		if (GroupList.find(parentID) == GroupList.end()) { return 1; }
+		GroupList[parentID].GroupDescendants.insert({ objID,Descendants[objID] });
 		return 0;
 	}
 
-	int removeFromGroup(const int groupID, const int objID) {
-		if (Groups.find(groupID) == Groups.end()) { return 1; }
-
+	int orphanObject(const int parentID, const int objID) {
+		if (GroupList.find(parentID) == GroupList.end()) { return 1; }
+		if (GroupList[parentID].GroupDescendants.find(objID) == GroupList[parentID].GroupDescendants.end()) { return 2; }
+		GroupList[parentID].GroupDescendants.erase(objID);
 		return 0;
 	}
 
-	int setGroupEnabled(const int groupID, const bool Enabled) {
-		if (Groups.find(groupID) == Groups.end()) { return 1; }
+	int setGroupEnabled(const int parentID, const bool Enabled) {
+		if (groupID.find(groupID) == Groups.end()) { return 1; }
 
 		for (auto& currentObject : Groups[groupID]->GroupDescendants) {
 			if (currentObject->onScreenObject) {
