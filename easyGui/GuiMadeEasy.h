@@ -19,9 +19,9 @@ struct GME_genericData {
 };
 
 struct GME_guiGroup {
-	std::unordered_map<int,std::shared_ptr<GME_genericData>> GroupDescendants;
+	std::unordered_set<int> GroupDescendantsByID;
 	bool enabled = true;
-	int groupID;
+	int groupID = -1;
 };
 
 struct IntVector {
@@ -48,7 +48,7 @@ private:
 	std::unordered_map<int, SDL_Texture*> TextureList;
 	std::unordered_map<int, bool> VisibleList;
 	std::unordered_map<int, bool> InteractableList;
-	std::unordered_map<int, GME_guiGroup> GroupList;
+	std::unordered_map<int, std::shared_ptr<GME_guiGroup>> GroupList;
 
 	std::unordered_map<int, std::shared_ptr<GME_genericData>> Descendants;
 	std::vector<std::unordered_map<int, std::shared_ptr<GME_genericData>>> VisibleDescendantsSortedByZindex2D;
@@ -380,21 +380,23 @@ public:
 */
 	int makeObjectParent(const int parentID, const int objID) {
 		if (GroupList.find(parentID) == GroupList.end()) { return 1; }
-		GroupList[parentID].GroupDescendants.insert({ objID,Descendants[objID] });
+		GroupList[parentID]->GroupDescendantsByID.insert(objID);
 		return 0;
 	}
 
 	int orphanObject(const int parentID, const int objID) {
 		if (GroupList.find(parentID) == GroupList.end()) { return 1; }
-		if (GroupList[parentID].GroupDescendants.find(objID) == GroupList[parentID].GroupDescendants.end()) { return 2; }
-		GroupList[parentID].GroupDescendants.erase(objID);
+		if (GroupList[parentID]->GroupDescendantsByID.find(objID) == GroupList[parentID]->GroupDescendantsByID.end()) { return 2; }
+		GroupList[parentID]->GroupDescendantsByID.erase(objID);
 		return 0;
 	}
 
 	int setGroupEnabled(const int parentID, const bool Enabled) {
-		if (groupID.find(groupID) == Groups.end()) { return 1; }
+		if (GroupList.find(parentID) == GroupList.end()) { return 1; }
 
-		for (auto& currentObject : Groups[groupID]->GroupDescendants) {
+		for (auto currentID : GroupList[parentID]->GroupDescendantsByID) {
+			auto currentObject = Descendants[currentID];
+
 			if (currentObject->onScreenObject) {
 				VisibleList[currentObject->objectID] = Enabled;
 			}
@@ -519,7 +521,7 @@ public:
 		std::shared_ptr<GME_guiGroup> newGroup = std::make_shared<GME_guiGroup>();
 		newGroup->groupID = generateID();
 		
-		Groups.insert({ newGroup->groupID, newGroup });
+		GroupList.insert({ newGroup->groupID, newGroup });
 		return newGroup->groupID;
 	}
 
